@@ -1,14 +1,22 @@
 import pandas as pd
-import logging
-from model import Model
+from _log import logger
+from monitor import Monitor, DataManager
 
-logging.basicConfig(level=logging.INFO)
-m = Model()
 data = pd.read_csv('../data/CIP_1.csv', sep='\t')
 data.time = pd.to_datetime(data.time, format='%Y-%m-%d %H:%M:%S.%f')
-size = data.size
-train_data = data.loc[: size / 2]
-test_data = data.loc[size / 2:]
-m.load_history(train_data)
+train_size = 20000
+test_size = 20000
+train_data = data.loc[: train_size]
+test_data = data.loc[train_size: train_size + test_size]
+
+# Load history data
+manager = DataManager(limit=train_size)
+manager.load(train_data, clear=True)
+
+# Build monitor using manager
+monitor = Monitor(manager)
+count = [0, 0]
 for row in test_data.itertuples():
-    m.process(row)
+    is_safe = monitor.process(row)
+    count[is_safe] += 1
+logger.debug(str(count) + 'trust rate:' + str(count[1] / sum(count)))
